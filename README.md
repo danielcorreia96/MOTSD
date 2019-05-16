@@ -57,6 +57,9 @@ Code for the ESEC/FSE 2019 Tool Demo paper "A Multi-Objective Test Selection Too
     - fails: total number of test failures from build history
     - exec_times: total "expected" execution time for the selected tests using build history info
   - CLI --masked option: anonymize output results by replacing the file/test names with fake ones
+- Output:
+  - Interactive Mode: for the revision id, returns a list of selected tests
+  - Batch Mode: for each revision id in the dates range, tries to run the tool (printing tests results at the end or logging error cases) and terminates with a summary of the batch run with some statistics
 - Example command (interactive): `python testsel_pipeline.py single -o ddu -o fails data\jsons\actmatrix_demo1.json data\demo1.config`
 - Example command (batch mode): `python testsel_pipeline.py demo -o ddu -o fails data\jsons\actmatrix_demo1.json data\demo1.config`
   
