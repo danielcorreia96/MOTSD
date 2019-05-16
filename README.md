@@ -47,7 +47,7 @@ Code for the ESEC/FSE 2019 Tool Demo paper "A Multi-Objective Test Selection Too
 - Input Dependencies:
   - JSON files from previous component -> only the path to activity matrix is passed as an argument, the other 2 are inferred
   - Database configuration file and SQL queries for metrics (samples provided in data/database)
-  - Configuration file to setup branch path, dates range and ignored tests details 
+  - Configuration file to setup branch path, dates range and ignored tests/changes details 
   - CLI -o option: provide order of objectives to be used
   - Available metrics:
     - ddu: DDU
