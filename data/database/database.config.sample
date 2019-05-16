@@ -1,0 +1,1 @@
+Driver={see possible drivers at pyodbc docs};Server=some_sql_server;Database=some_database;Trusted_Connection=random;

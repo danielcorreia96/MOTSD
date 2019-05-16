@@ -1,0 +1,7 @@
+/*
+    This query should return the name of the test and the associated execution time
+*/
+SELECT test.NAME, test.EXECUTION_TIME
+
+FROM sample_table as test
+

@@ -1,0 +1,5 @@
+/*
+    This query should return the name of the test and associated total number of failures
+*/
+SELECT test.FULLNAME, test.FAILURES
+FROM sample_table as test

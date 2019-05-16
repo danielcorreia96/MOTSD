@@ -1,0 +1,29 @@
+{
+    "branch": "name of the svn repository in the file system (e.g. trunk)",
+    "opencover_exec":
+        "path to OpenCover.Console.exe -> get modified OpenCover version 4.6.27 from AppVeyor: https://ci.appveyor.com/project/danielcorreia96/opencover/builds/23686399 ",
+    "filters": [
+        "define filters using OpenCover syntax available at https://github.com/OpenCover/opencover/wiki/Usage#understanding-filters.",
+        "must include both code modules and tests modules for cover by test to work",
+        "+[ModuleA.Module1]*",
+        "+[ModuleB.Feature2]*",
+        "+[ModuleC.TestsGroup123]*"
+    ],
+    "cover_by_test": [
+        "add namespaces of tests to be tracked - syntax is very similar to filters",
+        "*ModuleC.TestsGroup123*",
+    ],
+    "runner": "path to a NUnit runner to execute the tests",
+    "runner_args": [
+        "add runner arguments in order to run tests provided by an input list"
+    ],
+    "runlists": [
+        "add paths to tests input lists",
+        "data\\example_tests_list1.in",
+        "data\\example_tests_list2.in",
+    ],
+    "runlists_path": "path to the directory where the tests input lists are located",
+    "reports_path": "path to the directory where the xml reports should be written to",
+    "searchdirs_path": "path to the application pdb directories - usually in Build/Debug",
+    "threshold": 123456 // a threshold value for method visits to reduce the execution overhead of the profiler
+}

@@ -1,0 +1,8 @@
+/**
+    Input Parameter - SVN Revision Id
+	Returns -Tests that failed for a given svn revision id
+	Why do I need this? -Source of truth for validation of the test selection tool
+**/
+SELECT history.TEST_NAME
+FROM build_history as history
+WHERE has_failing_tests = 1 and svn_revision_id = ?
