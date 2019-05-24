@@ -8,7 +8,7 @@ from typing import List
 import numpy as np
 from faker import Factory
 
-from backend.integrations.database import get_testfails_for_revision
+from backend.integrations.database import get_testfails_for_revision, has_missing_builds_for_revision
 from backend.selection.problem_data import ProblemData
 
 
@@ -129,21 +129,49 @@ def print_results_summary(results):
     valid_red_tests_scores = [
         res.solution_score[0]
         for res in not_innocent_red_executions
-        if res.solution_score[0] >= 0
+        if res.solution_score[0] >= 0 and res.solution_score[2] > 0
     ]
 
     valid_red_tests_precision = [
         res.solution_score[1] / res.solution_score[3]
         for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
+    ]
+
+    valid_red_tests_micro_precision_n = [
+        res.solution_score[1]
+        for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
+    ]
+
+    valid_red_tests_micro_precision_d = [
+        res.solution_score[3]
+        for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
     ]
 
     valid_red_tests_recall = [
         res.solution_score[1] / res.solution_score[2]
         for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
+    ]
+
+    valid_red_tests_micro_recall_n = [
+        res.solution_score[1]
+        for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
+    ]
+
+    valid_red_tests_micro_recall_d = [
+        res.solution_score[2]
+        for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
     ]
 
     valid_red_tests_f1 = [
-        get_f1_score(res.solution_score) for res in not_innocent_red_executions
+        get_f1_score(res.solution_score) 
+        for res in not_innocent_red_executions
+        if res.solution_score[2] > 0
     ]
 
     print("Tool Found Red Test(s) ?")
@@ -157,9 +185,14 @@ def print_results_summary(results):
     print(f"Average Score: {sum(valid_red_tests_scores)/len(valid_red_tests_scores)}")
 
     print(
-        f"Precision: {(sum(valid_red_tests_precision)/len(valid_red_tests_precision)) * 100}%"
+        f"Macro-Precision: {(sum(valid_red_tests_precision)/len(valid_red_tests_precision)) * 100}%"
     )
-    print(f"Recall: {(sum(valid_red_tests_recall)/len(valid_red_tests_recall)) * 100}%")
+    print(
+        f"Micro-Precision: {(sum(valid_red_tests_micro_precision_n)/sum(valid_red_tests_micro_precision_d)) * 100}%"
+    )
+
+    print(f"Macro-Recall: {(sum(valid_red_tests_recall)/len(valid_red_tests_recall)) * 100}%")
+    print(f"Micro-Recall: {(sum(valid_red_tests_micro_recall_n)/sum(valid_red_tests_micro_recall_d)) * 100}%")
     print(f"F1 Score: {(sum(valid_red_tests_f1)/len(valid_red_tests_f1)) * 100}%")
 
     sizes = np.array([res.solution_score[3] for res in tool_executions])
@@ -196,6 +229,10 @@ class RevisionResults:
         # get revision results from database
         rev_results = get_testfails_for_revision(revision=self.rev_id)
         self.orig_rev_history = set(rev_results.FULLNAME.values)
+
+        self.missing_builds = False
+        if len(self.orig_rev_history) == 0:
+            self.missing_builds = has_missing_builds_for_revision(revision=self.rev_id)
 
         # Filter ignored tests from config
         self.real_rev_history = set(
@@ -244,6 +281,7 @@ class RevisionResults:
             self.print_revision_status()
             self.print_execution_results(data)
             self.print_solution_list(data)
+            self.print_execution_inspection(data)
 
         # separator
         print("==========================" * 4)
@@ -261,6 +299,24 @@ class RevisionResults:
                 # print(f"\t{solution_tests}")
             else:
                 self.solution_score = (0, 0, 0, len(rev_solution))
+
+    def print_execution_inspection(self, data):
+        def aux_loop(tests_data):
+            available, impossible = 0, 0
+            for test in self.real_rev_history:
+                if any(x in test for x in tests_data):
+                    # print(f"{test} = Available")
+                    available += 1
+                else:
+                    print(f"\t{test} = Impossible")
+                    impossible += 1
+            print(f"Available={available} || Impossible={impossible}")
+
+        print(f"Checking test availability against original data - {data.original_tests.shape}")
+        aux_loop(data.original_tests)
+
+        print(f"Checking test availability against filtered data - {data.tests_index.shape}")
+        aux_loop(data.tests_index)
 
     def print_solution_list(self, data):
         def get_fake_test_name():
@@ -280,8 +336,8 @@ class RevisionResults:
             rev_solution = list(data.tests_index[pos == 1])
 
         print(f"Solution Size: {len(rev_solution)} tests")
-        solution_tests = "\n\t".join(rev_solution)
-        print(f"\t{solution_tests}")
+        # solution_tests = "\n\t".join(rev_solution)
+        # print(f"\t{solution_tests}")
 
     def print_solution_score(self, i, rev_solution):
         def get_matching_tests(rev_solution):
@@ -315,7 +371,10 @@ class RevisionResults:
 
     def print_revision_status(self):
         if len(self.orig_rev_history) == 0:
-            print(f"Revision {self.rev_id} had no failing tests")
+            if self.missing_builds:
+                print(f"Revision {self.rev_id} has missing builds")
+            else:
+                print(f"Revision {self.rev_id} had no failing tests")
         else:
             failed_tests = f"{len(self.orig_rev_history)} failed tests"
             if self.masked:

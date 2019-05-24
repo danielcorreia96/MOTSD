@@ -1,9 +1,14 @@
 # coding=utf-8
-import svn.local
-import os.path
 import datetime
+import os.path
+from pathlib import Path
 
+import svn.local
+from joblib import Memory
 
+memory = Memory(Path("data"), verbose=0)
+
+@memory.cache
 def get_log(branch, from_dt, to_dt):
     repo_path = os.path.abspath(branch)
     client = svn.local.LocalClient(path_=repo_path)
@@ -15,7 +20,7 @@ def get_log(branch, from_dt, to_dt):
     )
     return log
 
-
+@memory.cache()
 def get_log_for_revision(branch, revision):
     repo_path = os.path.abspath(branch)
     client = svn.local.LocalClient(path_=repo_path)
