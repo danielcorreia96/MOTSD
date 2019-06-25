@@ -36,8 +36,8 @@ def has_missing_builds_for_revision(revision):
     return False
 
 @memory.cache
-def get_test_execution_times():
+def get_test_execution_times(from_dt, to_dt):
     print(f"Querying db for test execution times")
     query = Path(f"{database_home}test_execution_times.sql").read_text()
     connection = pyodbc.connect(DB_CONFIG)
-    return pd.read_sql(query, connection)
+    return pd.read_sql_query(query, connection, params=[from_dt, to_dt])

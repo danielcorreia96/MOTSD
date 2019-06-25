@@ -25,7 +25,7 @@ def print_function_values_to_screen(solutions, data):
         print(f" (sol_size: {len(rev_solution)})")
 
 
-def print_results_summary(results):
+def print_results_summary(results, data: ProblemData):
     """
 
     :type results: List[RevisionResults]
@@ -183,26 +183,46 @@ def print_results_summary(results):
     print(f"Yes, At least one: {len(found_red_tests_at_least_one)}")
     print(f"Yes, +50%: {len(found_red_tests_at_least_half)}")
     print(f"Yes, 100%: {len(found_red_tests_all)}")
-    print(f"Average Score: {sum(valid_red_tests_scores)/len(valid_red_tests_scores)}")
+    # print(f"Average Score: {sum(valid_red_tests_scores)/len(valid_red_tests_scores)}")
 
     print(
-        f"Macro-Precision: {(sum(valid_red_tests_precision)/len(valid_red_tests_precision)) * 100}%"
+        f"Macro-Precision: {(sum(valid_red_tests_precision)/len(valid_red_tests_precision)) * 100:.0f}%"
     )
     print(
-        f"Micro-Precision: {(sum(valid_red_tests_micro_precision_n)/sum(valid_red_tests_micro_precision_d)) * 100}%"
+        f"Micro-Precision: {(sum(valid_red_tests_micro_precision_n)/sum(valid_red_tests_micro_precision_d)) * 100:.0f}%"
     )
 
-    print(f"Macro-Recall: {(sum(valid_red_tests_recall)/len(valid_red_tests_recall)) * 100}%")
-    print(f"Micro-Recall: {(sum(valid_red_tests_micro_recall_n)/sum(valid_red_tests_micro_recall_d)) * 100}%")
-    print(f"F1 Score: {(sum(valid_red_tests_f1)/len(valid_red_tests_f1)) * 100}%")
+    print(f"Macro-Recall: {(sum(valid_red_tests_recall)/len(valid_red_tests_recall)) * 100:.0f}%")
+    print(f"Micro-Recall: {(sum(valid_red_tests_micro_recall_n)/sum(valid_red_tests_micro_recall_d)) * 100:.0f}%")
+    # print(f"F1 Score: {(sum(valid_red_tests_f1)/len(valid_red_tests_f1)) * 100}%")
 
     sizes = np.array([res.solution_score[3] for res in tool_executions])
     print(
-        f"Sol Size (avg, min, max, std): ({np.average(sizes)}, {np.min(sizes)}, {np.max(sizes)}, {np.std(sizes)})"
+        f"Solution Size (avg, min, max, std): ({np.average(sizes):.0f}, {np.min(sizes)}, {np.max(sizes)}, {np.std(sizes):.0f})"
+    )
+
+    print(
+        f"Solution Size Percentiles (10, 25, 50, 75, 90): ({np.percentile(sizes, 10):.0f}, "
+        f"{np.percentile(sizes, 25):.0f}, {np.percentile(sizes, 50):.0f}, "
+        f"{np.percentile(sizes, 75):.0f}, {np.percentile(sizes, 90):.0f})"
     )
 
     times = np.array([res.computing_time for res in tool_executions])
-    print(f"Average Computing Time: {np.average(times)}")
+    print(f"Average Computing Time: {np.average(times):.0f}")
+
+    original_feedback_time = sum(data.history_test_execution_times.values())
+    feedback_times = np.array([res.new_feedback_time for res in tool_executions])
+    print(f"Original Feedback Time: {original_feedback_time:.0f}")
+    np.median(feedback_times)
+    print(
+        f"New Feedback Time (avg, min, max, std): ({np.average(feedback_times):.0f}, {np.min(feedback_times):.3f}, {np.max(feedback_times):.3f}, {np.std(feedback_times):.0f})"
+    )
+    print(
+        f"New Feedback Time Percentiles (10, 25, 50, 75, 90): ({np.percentile(feedback_times, 10):.3f}, "
+        f"{np.percentile(feedback_times, 25):.3f}, {np.percentile(feedback_times, 50):.3f}, "
+        f"{np.percentile(feedback_times, 75):.3f}, {np.percentile(feedback_times, 90):.3f})"
+    )
+
     pass
 
 
@@ -215,6 +235,7 @@ class RevisionResults:
     error_no_changed_items: str
     solutions_found: list
     solution_score: tuple  # (score %, # matched, # expected, # tests)
+    new_feedback_time: float
     computing_time: float
     orig_rev_history: set
     real_rev_history: set
@@ -340,6 +361,8 @@ class RevisionResults:
             rev_solution = list(data.tests_index[pos == 1])
 
         print(f"Solution Size: {len(rev_solution)} tests")
+        self.new_feedback_time = sum([data.history_test_execution_times[test] for test in rev_solution])
+        print(f"Solution Feedback Loop Time: {self.new_feedback_time:.0f} seconds")
         # solution_tests = "\n\t".join(rev_solution)
         # print(f"\t{solution_tests}")
 

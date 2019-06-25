@@ -29,7 +29,7 @@ def cli():
     pass
 
 
-@cli.command("single")
+@cli.command("user")
 @click.option(
     "--objectives",
     "-o",
@@ -38,11 +38,12 @@ def cli():
     multiple=True,
 )
 @click.option("--masked", is_flag=True)
+@click.argument("swarm_size", type=click.INT)
 @click.argument("activity_matrix", type=click.Path(exists=True, readable=True))
 @click.argument("demo_config", type=click.Path(exists=True, readable=True))
-def run_optimization(objectives, masked, activity_matrix, demo_config):
+def run_optimization(objectives, masked, activity_matrix, demo_config, swarm_size):
     """
-        Runs optimization pipeline for a given ACTIVITY_MATRIX (json file)
+        User input-based execution of the pipeline
     """
     with open(demo_config, mode="r") as demo_file:
         config = json.load(demo_file)
@@ -51,8 +52,11 @@ def run_optimization(objectives, masked, activity_matrix, demo_config):
         activity_matrix,
         config["branch"],
         config["from_dt"],
+        config["to_dt"],
         ignore_tests=config["ignore_tests"],
     )
+
+    data.swarm_size = swarm_size
 
     while True:
         revision = input("Target Revision Id: ")
@@ -119,6 +123,7 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, 
         activity_matrix,
         config["branch"],
         config["from_dt"],
+        config["to_dt"],
         ignore_tests=config["ignore_tests"],
     )
 
@@ -132,7 +137,7 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, 
     ]
 
     # Print results summary report
-    print_results_summary(results)
+    print_results_summary(results, data)
 
 
 def run_pipeline(data, objectives, revision: RevisionResults):

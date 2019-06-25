@@ -52,7 +52,7 @@ class ProblemData:
 
     swarm_size: int
 
-    def __init__(self, activity_matrix_path, branch, from_date, ignore_tests=None):
+    def __init__(self, activity_matrix_path, branch, from_date, to_date, ignore_tests=None):
         """
         ProblemData initialization.
 
@@ -73,7 +73,7 @@ class ProblemData:
             database.get_test_name_fails(from_date)
         )
         self.history_test_execution_times = get_historical_metric_map(
-            database.get_test_execution_times()
+            database.get_test_execution_times(from_date, to_date)
         )
 
         self.new_files = {}
