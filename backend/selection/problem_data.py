@@ -50,6 +50,8 @@ class ProblemData:
     branch: str
     ignore_tests: list
 
+    swarm_size: int
+
     def __init__(self, activity_matrix_path, branch, from_date, ignore_tests=None):
         """
         ProblemData initialization.

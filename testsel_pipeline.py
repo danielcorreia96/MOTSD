@@ -83,9 +83,10 @@ def run_optimization(objectives, masked, activity_matrix, demo_config):
     multiple=True,
 )
 @click.option("--masked", is_flag=True)
+@click.argument("swarm_size", type=click.INT)
 @click.argument("activity_matrix", type=click.Path(exists=True, readable=True))
 @click.argument("demo_config", type=click.Path(exists=True, readable=True))
-def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked):
+def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, swarm_size):
     def is_ignored_project(changelist, ignore_changes):
         return all(
             any(ignore in change[1] for ignore in ignore_changes)
@@ -121,6 +122,8 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked):
         ignore_tests=config["ignore_tests"],
     )
 
+    data.swarm_size = swarm_size
+
     # Run tool for each revision
     results = [
         run_tool_for_revision(log_e, data)
@@ -146,7 +149,7 @@ def run_pipeline(data, objectives, revision: RevisionResults):
 
     # Run optimizer for the reduced matrix
     problem = TestSelection(data, objectives)
-    solution_front = run_optimizer(my_binary_mopso(problem), revision)
+    solution_front = run_optimizer(my_binary_mopso(problem, data.swarm_size), revision)
     revision.solutions_found = solution_front
 
 

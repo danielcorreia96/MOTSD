@@ -23,7 +23,7 @@ def process_multiple_xml_reports(reports_path, output_name, branch_name):
     )
 
     # Collect id-activity matrices for each report
-    with Pool(processes=4) as pool:
+    with Pool(processes=2) as pool:
         result = pool.map(
             partial(get_id_activity_matrix, branch=branch_name), report_files
         )

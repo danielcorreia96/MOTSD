@@ -109,6 +109,7 @@ def print_results_summary(results):
     )
 
     # Print results regarding the tool's ability to find the red tests
+    # not_innocent_red_executions = [res for res in red_executions if res.innocent is not True]
     not_innocent_red_executions = [res for res in red_executions]
     not_found_red_tests = [
         res for res in not_innocent_red_executions if res.solution_score[0] == 0
@@ -135,7 +136,7 @@ def print_results_summary(results):
     valid_red_tests_precision = [
         res.solution_score[1] / res.solution_score[3]
         for res in not_innocent_red_executions
-        if res.solution_score[2] > 0
+        if res.solution_score[2] > 0 and res.solution_score[3] > 0
     ]
 
     valid_red_tests_micro_precision_n = [
@@ -171,7 +172,7 @@ def print_results_summary(results):
     valid_red_tests_f1 = [
         get_f1_score(res.solution_score) 
         for res in not_innocent_red_executions
-        if res.solution_score[2] > 0
+        if res.solution_score[2] > 0 and res.solution_score[3] > 0
     ]
 
     print("Tool Found Red Test(s) ?")
@@ -199,6 +200,9 @@ def print_results_summary(results):
     print(
         f"Sol Size (avg, min, max, std): ({np.average(sizes)}, {np.min(sizes)}, {np.max(sizes)}, {np.std(sizes)})"
     )
+
+    times = np.array([res.computing_time for res in tool_executions])
+    print(f"Average Computing Time: {np.average(times)}")
     pass
 
 

@@ -55,12 +55,12 @@ class TestSelection(BinaryProblem):
         return solution
 
 
-def my_binary_mopso(problem: TestSelection):
+def my_binary_mopso(problem: TestSelection, swarm):
     return BMOPSO(
         problem=problem,
-        swarm_size=200,
+        swarm_size=swarm,
         epsilon=0.075,
-        mutation=BitFlipMutation(probability=0.5),
+        mutation=BitFlipMutation(probability=0),
         leaders=CrowdingDistanceArchive(100),
-        termination_criterion=StoppingByEvaluations(max=1000),
+        termination_criterion=StoppingByEvaluations(max=2000),
     )

@@ -34,25 +34,25 @@ def get_method_file_ref(method):
 
 def is_relevant_method(method):
     # relevant -> not lambda, not constructors or not other generated things
-    name = get_method_name(method)
-    regexes = [
-        "<.*>f__AnonymousType.*::",
-        "::.ctor()",
-        "::.cctor()",
-        "<.*>b__.*",
-        "<.*>d__.*::",
-        "<.*>c__DisplayClass",
-        "<.*>c::",
-        ".*::get_.*()",
-        ".*::set_.*()",
-        ".*::.*.get_.*()",
-        ".*::.*.set_.*()",
-    ]
-    combined = "(" + ")|(".join(regexes) + ")"
+    # name = get_method_name(method)
+    # regexes = [
+    #     "<.*>f__AnonymousType.*::",
+    #     "::.ctor()",
+    #     "::.cctor()",
+    #     "<.*>b__.*",
+    #     "<.*>d__.*::",
+    #     "<.*>c__DisplayClass",
+    #     "<.*>c::",
+    #     ".*::get_.*()",
+    #     ".*::set_.*()",
+    #     ".*::.*.get_.*()",
+    #     ".*::.*.set_.*()",
+    # ]
+    # combined = "(" + ")|(".join(regexes) + ")"
 
-    if re.search(combined, name):
-        # print(f"Some regex matched! --> {name}")
-        return False
+    # if re.search(combined, name):
+    #     # print(f"Some regex matched! --> {name}")
+    #     return False
     return True
 
 
