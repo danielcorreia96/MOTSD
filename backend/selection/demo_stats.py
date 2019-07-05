@@ -7,7 +7,10 @@ from datetime import datetime
 import numpy as np
 from faker import Factory
 
-from backend.integrations.database import get_testfails_for_revision, has_missing_builds_for_revision
+from backend.integrations.database import (
+    get_testfails_for_revision,
+    has_missing_builds_for_revision,
+)
 from backend.selection.problem_data import ProblemData
 
 
@@ -135,10 +138,14 @@ class RevisionResults:
                     impossible += 1
             print(f"Available={available} || Impossible={impossible}")
 
-        print(f"Checking test availability against original data - {data.original_tests.shape}")
+        print(
+            f"Checking test availability against original data - {data.original_tests.shape}"
+        )
         aux_loop(data.original_tests)
 
-        print(f"Checking test availability against filtered data - {data.tests_index.shape}")
+        print(
+            f"Checking test availability against filtered data - {data.tests_index.shape}"
+        )
         aux_loop(data.tests_index)
 
     def print_solution_list(self, data):
@@ -159,7 +166,9 @@ class RevisionResults:
             rev_solution = list(data.tests_index[pos == 1])
 
         print(f"Solution Size: {len(rev_solution)} tests")
-        self.new_feedback_time = sum([data.history_test_execution_times[test] for test in rev_solution])
+        self.new_feedback_time = sum(
+            [data.history_test_execution_times[test] for test in rev_solution]
+        )
         print(f"Solution Feedback Loop Time: {self.new_feedback_time:.0f} seconds")
         # solution_tests = "\n\t".join(rev_solution)
         # print(f"\t{solution_tests}")

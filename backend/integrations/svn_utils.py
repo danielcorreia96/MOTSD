@@ -8,6 +8,7 @@ from joblib import Memory
 
 memory = Memory(Path("data"), verbose=0)
 
+
 @memory.cache
 def get_log(branch, from_dt, to_dt):
     repo_path = os.path.abspath(branch)
@@ -19,6 +20,7 @@ def get_log(branch, from_dt, to_dt):
         changelist=True,
     )
     return log
+
 
 @memory.cache()
 def get_log_for_revision(branch, revision):

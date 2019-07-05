@@ -52,7 +52,9 @@ class ProblemData:
 
     swarm_size: int
 
-    def __init__(self, activity_matrix_path, branch, from_date, to_date, ignore_tests=None):
+    def __init__(
+        self, activity_matrix_path, branch, from_date, to_date, ignore_tests=None
+    ):
         """
         ProblemData initialization.
 

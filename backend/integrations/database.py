@@ -24,6 +24,7 @@ def get_testfails_for_revision(revision):
     connection = pyodbc.connect(DB_CONFIG)
     return pd.read_sql_query(query, connection, params=[revision])
 
+
 @memory.cache
 def has_missing_builds_for_revision(revision):
     print(f"Querying db for missing builds for rev {revision}")
@@ -34,6 +35,7 @@ def has_missing_builds_for_revision(revision):
         if len(set(result.FULLNAME.values)) == 0:
             return True
     return False
+
 
 @memory.cache
 def get_test_execution_times(from_dt, to_dt):

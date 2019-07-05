@@ -1,7 +1,6 @@
 # coding=utf-8
 import xml.etree.ElementTree as ET
 import json
-import datetime
 import itertools
 import re
 import numpy as np
@@ -42,9 +41,8 @@ def build_methods_map(code_modules):
     for module in code_modules.values():
         for clazz in utils.get_module_classes(module):
             for method in utils.get_class_methods(clazz):
-                if utils.is_relevant_method(method):
-                    method_name = utils.get_method_name(method)
-                    methods_uids_map["m" + str(next(counter))] = method_name
+                method_name = utils.get_method_name(method)
+                methods_uids_map["m" + str(next(counter))] = method_name
 
     return methods_uids_map
 
@@ -63,15 +61,14 @@ def build_id_activity_matrix(code_modules, methods_uids_map, files_map):
     for module in code_modules.values():
         for clazz in utils.get_module_classes(module):
             for method in utils.get_class_methods(clazz):
-                if utils.is_relevant_method(method):
-                    method_name, tests = utils.get_method_coverage(method)
-                    if method_name is not None:
-                        method_id = get_method_id(method_name)
-                        activity_matrix[method_id] = tests
-                        # update methods map with namespace fix
-                        fix_methods_map_namespace(
-                            files_map, method, method_id, method_name, methods_uids_map
-                        )
+                method_name, tests = utils.get_method_coverage(method)
+                if method_name is not None:
+                    method_id = get_method_id(method_name)
+                    activity_matrix[method_id] = tests
+                    # update methods map with namespace fix
+                    fix_methods_map_namespace(
+                        files_map, method, method_id, method_name, methods_uids_map
+                    )
 
     return activity_matrix
 
