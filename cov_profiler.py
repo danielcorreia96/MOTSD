@@ -61,7 +61,7 @@ def get_opencover_args(config, testlist):
         f" -threshold:{threshold} ",
         " -hideskipped:All ",
         " -mergebyhash ",
-#        " -skipautoprops ",
+        #        " -skipautoprops ",
         f" -filter:{' '.join(filters)} ",
         f" -coverbytest:{';'.join(cover_by_test)} ",
         f" -searchdirs: {search_dirs} ",
