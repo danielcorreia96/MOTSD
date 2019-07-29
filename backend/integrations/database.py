@@ -33,6 +33,7 @@ def has_missing_builds_for_revision(revision):
         connection = pyodbc.connect(DB_CONFIG)
         result = pd.read_sql_query(query, connection, params=[revision])
         if len(set(result.FULLNAME.values)) == 0:
+            print(f"Missing builds for {stage}")
             return True
     return False
 

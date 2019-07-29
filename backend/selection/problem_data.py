@@ -146,6 +146,7 @@ class ProblemData:
         # Filter no activity tests/methods
         self.filter_tests_with_no_activity()
         self.filter_methods_with_no_activity()
+        pass
 
     def get_changed_indexes_for_changelist(self, changelist):
         cs_pattern = self.branch + r"/(.*)\.cs$"

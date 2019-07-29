@@ -6,7 +6,7 @@ from pathlib import Path
 import svn.local
 from joblib import Memory
 
-memory = Memory(Path("data"), verbose=0)
+memory = Memory(Path("data"), verbose=1)
 
 
 @memory.cache
@@ -19,7 +19,7 @@ def get_log(branch, from_dt, to_dt):
         timestamp_to_dt=datetime.datetime.fromisoformat(to_dt),
         changelist=True,
     )
-    return log
+    return [log_e for log_e in log]
 
 
 @memory.cache()
@@ -30,4 +30,4 @@ def get_log_for_revision(branch, revision):
     log = client.log_default(
         revision_from=revision, revision_to=revision, changelist=True
     )
-    return log
+    return [log_e for log_e in log]

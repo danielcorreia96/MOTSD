@@ -41,7 +41,8 @@ class BMOPSO(ParticleSwarmOptimization):
 
         self.epsilon = epsilon
         self.epsilon_archive = NonDominatedSolutionListArchive(
-            EpsilonDominanceComparator(epsilon)
+            # EpsilonDominanceComparator(epsilon)
+            DominanceComparator()
         )
 
         self.c1_min = 1.5
