@@ -53,7 +53,13 @@ class ProblemData:
     swarm_size: int
 
     def __init__(
-        self, activity_matrix_path, branch, from_date, to_date, ignore_tests=None
+        self,
+        activity_matrix_path,
+        branch,
+        fails_start_date,
+        from_date,
+        to_date,
+        ignore_tests=None,
     ):
         """
         ProblemData initialization.
@@ -72,7 +78,7 @@ class ProblemData:
 
         # Load historical data
         self.history_test_fails = get_historical_metric_map(
-            database.get_test_name_fails(from_date)
+            database.get_test_name_fails(fails_start_date, from_date)
         )
         self.history_test_execution_times = get_historical_metric_map(
             database.get_test_execution_times(from_date, to_date)
@@ -148,9 +154,19 @@ class ProblemData:
         self.filter_methods_with_no_activity()
         pass
 
-    def get_changed_indexes_for_changelist(self, changelist):
+    def get_changed_indexes_for_changelist(self, changelist, ignore_changes):
         cs_pattern = self.branch + r"/(.*)\.cs$"
         xaml_cs_pattern = self.branch + r"/(.*)xaml\.cs"
+
+        # filter changelist before processing
+        changelist = [
+            change
+            for change in changelist
+            if not any(
+                (ignore in change[1]) or (change[1] == "/platform/trunk")
+                for ignore in ignore_changes
+            )
+        ]
 
         new_files = []
         changed_files = []

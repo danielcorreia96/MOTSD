@@ -6,7 +6,8 @@ import numpy as np
 from jmetal.core.algorithm import Algorithm
 
 import backend.selection.objectives as metrics
-from backend.selection.demo_stats import RevisionResults, print_results_summary
+from backend.evaluation.execution_item import RevisionResults
+from backend.evaluation.summary import ResultsSummary
 from backend.selection.problem_data import ProblemData
 from backend.selection.test_selection import TestSelection, my_binary_mopso
 from backend.integrations.svn_utils import get_log, get_log_for_revision
@@ -51,6 +52,7 @@ def run_optimization(objectives, masked, activity_matrix, demo_config, swarm_siz
     data = ProblemData(
         activity_matrix,
         config["branch"],
+        config["fails_start_dt"],
         config["from_dt"],
         config["to_dt"],
         ignore_tests=config["ignore_tests"],
@@ -90,14 +92,17 @@ def run_optimization(objectives, masked, activity_matrix, demo_config, swarm_siz
 @click.argument("swarm_size", type=click.INT)
 @click.argument("activity_matrix", type=click.Path(exists=True, readable=True))
 @click.argument("demo_config", type=click.Path(exists=True, readable=True))
-def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, swarm_size):
+@click.argument("output_file", type=click.Path())
+def run_optimization_for_demo(
+    activity_matrix, demo_config, objectives, masked, swarm_size, output_file
+):
     def is_ignored_project(changelist, ignore_changes):
         return all(
             any(ignore in change[1] for ignore in ignore_changes)
             for change in changelist
         )
 
-    def run_tool_for_revision(revision, data):
+    def run_tool_for_revision(revision, data, previous_rev, ignore_changes):
         print(f"Running pipeline demo with the following objectives: {objectives}")
         metrics = [OBJECTIVES_MAP[key] for key in objectives]
         # Reset problem data to original matrices
@@ -105,9 +110,9 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, 
 
         # Run pipeline for revision
         revision_results = RevisionResults(
-            revision, data.branch, data.ignore_tests, masked
+            revision, data.branch, data.ignore_tests, previous_rev, masked
         )
-        run_pipeline(data, metrics, revision_results)
+        run_pipeline(data, metrics, revision_results, ignore_changes)
         revision_results.print_results(data)
 
         return revision_results
@@ -122,6 +127,7 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, 
     data = ProblemData(
         activity_matrix,
         config["branch"],
+        config["fails_start_dt"],
         config["from_dt"],
         config["to_dt"],
         ignore_tests=config["ignore_tests"],
@@ -130,19 +136,35 @@ def run_optimization_for_demo(activity_matrix, demo_config, objectives, masked, 
     data.swarm_size = swarm_size
 
     # Run tool for each revision
-    results = [
-        run_tool_for_revision(log_e, data)
-        for log_e in log
-        if not is_ignored_project(log_e.changelist, config["ignore_changes"])
-    ]
+    results = []
+    previous = None
+    # for log_e in log[:100]:
+    for log_e in log:
+        if not is_ignored_project(log_e.changelist, config["ignore_changes"]):
+            res = run_tool_for_revision(log_e, data, previous, config["ignore_changes"])
+            results.append(res)
+            previous = res
 
-    # Print results summary report
-    print_results_summary(results, data)
+    # Build results summary report
+    summary = ResultsSummary(results, data)
+
+    # - print summary to terminal
+    summary.export_to_text()
+
+    # save data to pickle
+    with open(output_file, mode="wb") as output:
+        summary.export_to_pickle(output)
+
+    # - store summary and results in JSON
+    # with open(json_output, mode="w") as output:
+    #     summary.export_to_json(output)
 
 
-def run_pipeline(data, objectives, revision: RevisionResults):
+def run_pipeline(data, objectives, revision: RevisionResults, ignore_changes):
     # Get indexes for methods changed by a commit
-    changed_idxs = data.get_changed_indexes_for_changelist(revision.changelist)
+    changed_idxs = data.get_changed_indexes_for_changelist(
+        revision.changelist, ignore_changes
+    )
 
     # Stop pipeline if no changed indexes were extracted
     if type(changed_idxs) == str:

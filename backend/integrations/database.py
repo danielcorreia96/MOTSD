@@ -10,11 +10,11 @@ DB_CONFIG = Path(f"{database_home}database.config").read_text()
 
 
 @memory.cache
-def get_test_name_fails(max_date):
+def get_test_name_fails(start_date, max_date):
     print("Querying database for test name fails")
     query = Path(f"{database_home}test_name_fails.sql").read_text()
     connection = pyodbc.connect(DB_CONFIG)
-    return pd.read_sql_query(query, connection, params=[max_date])
+    return pd.read_sql_query(query, connection, params=[start_date, max_date])
 
 
 @memory.cache
