@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-import yaml
 
 import backend.evaluation.utils
 from backend.evaluation.execution_item import RevisionResults
@@ -60,8 +59,10 @@ class ResultsSummary:
 
         # Red Stats
         # Print results regarding the tool's ability to find the red tests
-        # not_innocent_red_executions = [res for res in red_executions if res.innocent is not True]
-        not_innocent_red_executions = [res for res in red_executions]
+        not_innocent_red_executions = [
+            res for res in red_executions if res.innocent is not True
+        ]
+        # not_innocent_red_executions = [res for res in red_executions]
         not_found_red_tests = [
             res for res in not_innocent_red_executions if res.solution_score[0] == 0
         ]
@@ -101,7 +102,9 @@ class ResultsSummary:
         )
 
         # Computing Time
-        times = np.array([res.computing_time for res in tool_executions])
+        times = np.array(
+            [res.computing_time for res in tool_executions if res.computing_time > 0]
+        )
         self.computing_time = dict(
             zip(metric_keys, backend.evaluation.utils.get_metric_stats(times))
         )
@@ -110,13 +113,21 @@ class ResultsSummary:
         self.orig_feedback_time = sum(data.history_test_execution_times.values())
 
         # New Feedback Time
-        feedback_times = np.array([res.new_feedback_time for res in tool_executions])
+        feedback_times = np.array(
+            [
+                res.new_feedback_time
+                for res in tool_executions
+                if res.new_feedback_time > 0
+            ]
+        )
         self.new_feedback_time = dict(
             zip(metric_keys, backend.evaluation.utils.get_metric_stats(feedback_times))
         )
 
         # Store data
         self.data = results
+        for res in self.data:
+            res.solutions_found = []
 
     def export_to_text(self):
         commits = list(self.commits.values())
@@ -129,7 +140,9 @@ class ResultsSummary:
         )
 
         for error, [total, red] in self.errors.items():
-            print(f"# {error}: {total} (red: {red})")
+            print(
+                f"# {error}: {self.errors[error][total]} (red: {self.errors[error][red]})"
+            )
 
         print("Tool Found Red Test(s) ?")
         red_stats = list(self.red_stats.values())
@@ -155,7 +168,29 @@ class ResultsSummary:
         self.print_metric_stats("New Feedback Time", feedback_time)
 
     def export_to_pickle(self, file):
+        import gc
+
+        gc.collect()
         pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def export_to_csv_line(self, only_stats=False):
+        line = []
+        if not only_stats:
+            line.extend(list(self.commits.values()))
+            line.extend(list(self.executions.values()))
+
+            for error, [total, red] in self.errors.items():
+                line.extend([self.errors[error][total], self.errors[error][red]])
+
+        line.extend(list(self.red_stats.values()))
+        line.extend(list(self.solution_size.values()))
+        line.extend(list(self.computing_time.values()))
+        line.extend([int(self.orig_feedback_time)])
+        line.extend(list(self.new_feedback_time.values()))
+
+        # stringify items
+        line = [str(x) for x in line]
+        return "|".join(line)
 
     @staticmethod
     def print_metric_stats(name, data):

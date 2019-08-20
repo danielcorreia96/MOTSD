@@ -1,5 +1,5 @@
 # coding=utf-8
-COVERAGE_MAP = {"ddu": "d", "coverage": "c", "norm_coverage": "n"}
+COVERAGE_MAP = {"ddu": "d", "norm_coverage": "n"}
 
 HISTORY_MAP = {"exec_times": "e", "fails": "f", "n_tests": "t"}
 
@@ -44,7 +44,7 @@ def baseline_tests():
     print()
 
 
-def metrics_combos_tests():
+def metrics_2combos_tests():
     from itertools import permutations, product
 
     base = f"{OUTPUT_PATH}\\metrics_combos\\mcombos_"
@@ -57,6 +57,51 @@ def metrics_combos_tests():
                 print_command(metrics, size, json_data, config, name)
         print()
     print()
+
+def metrics_3combos_tests():
+    from itertools import permutations, product
+
+    base = f"{OUTPUT_PATH}\\metrics_combos\\mcombos_"
+    for (batch, json_data, config) in DATA:
+        combos_done = []
+        for (cov, hist1, hist2) in product(COVERAGE_MAP.items(), HISTORY_MAP.items(), HISTORY_MAP.items()):
+            if hist1 == hist2:
+                continue
+            combos = permutations([cov, hist1, hist2], 3)
+            for ((m1_key, m1_name), (m2_key, m2_name), (m3_key, m3_name)) in combos:
+                metrics_name = f"{m1_name}{m2_name}{m3_name}"
+                if metrics_name in combos_done:
+                    continue
+                name = f"{base}{metrics_name}_{batch}"                
+                metrics, size = f"-o {m1_key} -o {m2_key} -o {m3_key}", 100
+                print_command(metrics, size, json_data, config, name)
+                combos_done.append(metrics_name)
+        print()
+    print()
+
+
+def metrics_4combos_tests():
+    from itertools import permutations, product
+
+    base = f"{OUTPUT_PATH}\\metrics_combos\\mcombos_"
+    for (batch, json_data, config) in DATA:
+        combos_done = []
+        for (cov, hist1, hist2, hist3) in product(COVERAGE_MAP.items(), HISTORY_MAP.items(), HISTORY_MAP.items(), HISTORY_MAP.items()):
+            if hist1 == hist2 or hist1 == hist3 or hist2 == hist3:
+                continue
+            combos = permutations([cov, hist1, hist2, hist3], 4)
+            for ((m1_key, m1_name), (m2_key, m2_name), (m3_key, m3_name), (m4_key, m4_name)) in combos:
+                metrics_name = f"{m1_name}{m2_name}{m3_name}{m4_name}"
+                if metrics_name in combos_done:
+                    continue
+                name = f"{base}{metrics_name}_{batch}"
+                metrics, size = f"-o {m1_key} -o {m2_key} -o {m3_key} -o {m4_key}", 100
+                print_command(metrics, size, json_data, config, name)
+                combos_done.append(metrics_name)
+        print()
+    print()
+
+
 
 
 def swarm_size_tests():
@@ -78,5 +123,12 @@ if __name__ == "__main__":
     # swarm size
     swarm_size_tests()
 
-    # metrics combos
-    metrics_combos_tests()
+    # metrics 2-combos
+    metrics_2combos_tests()
+
+    # metrics 3-combos
+    metrics_3combos_tests()
+    
+    # metrics 4-combos
+    # metrics_4combos_tests()
+    

@@ -35,9 +35,10 @@ class RevisionResults:
     changelist: list
     error_no_changed_items: str
     solutions_found: list
-    # solution_score: tuple  # (score %, # matched, # expected, # tests)
-    # new_feedback_time: float
-    # computing_time: float
+    solution_score: tuple  # (score %, # matched, # expected, # tests)
+    solution_metrics: list
+    new_feedback_time: float
+    computing_time: float
     # orig_rev_history: set
     real_rev_history: set
     innocent: bool
@@ -74,6 +75,12 @@ class RevisionResults:
         )
         if masked:
             self.fake = Factory.create()
+
+        self.solutions_found = []
+        self.solution_score = (-1, -1, -1, -1)
+        self.new_feedback_time = 0
+        self.computing_time = 0
+        self.solution_metrics = []
 
     def print_results(self, data: ProblemData):
         def get_fake_filename(file_changed):
@@ -163,6 +170,7 @@ class RevisionResults:
             return test_name
 
         solution = self.solutions_found[0]
+        self.solution_metrics = solution.objectives
         pos = np.array(solution.variables[0])
         if self.masked:
             rev_solution = list(data.tests_index[pos == 1])
