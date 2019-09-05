@@ -76,7 +76,7 @@ def run_optimization(objectives, masked, activity_matrix, demo_config, swarm_siz
         revision_results = RevisionResults(
             log_entry, data.branch, data.ignore_tests, masked
         )
-        run_pipeline(data, metrics, revision_results)
+        run_pipeline(data, metrics, revision_results, config["ignore_changes"])
         revision_results.print_results(data)
 
 

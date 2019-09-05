@@ -39,7 +39,7 @@ class RevisionResults:
     solution_metrics: list
     new_feedback_time: float
     computing_time: float
-    # orig_rev_history: set
+    orig_rev_history: set
     real_rev_history: set
     innocent: bool
 
@@ -57,20 +57,21 @@ class RevisionResults:
 
         # get revision results from database
         rev_results = get_testfails_for_revision(revision=self.rev_id)
-        orig_rev_history = set(rev_results.FULLNAME.values)
+        self.orig_rev_history = set(rev_results.FULLNAME.values)
 
         # self.missing_builds = False
-        if len(orig_rev_history) == 0:
+        if len(self.orig_rev_history) == 0:
             # self.missing_builds = has_missing_builds_for_revision(revision=self.rev_id)
             if previous_rev is not None:
-                orig_rev_history = previous_rev.real_rev_history
+                self.orig_rev_history = previous_rev.real_rev_history
             else:
-                orig_rev_history = set()
+                self.orig_rev_history = set()
 
         # Filter ignored tests from config
         self.real_rev_history = set(
             filter(
-                lambda test: all(x not in test for x in ignored_tests), orig_rev_history
+                lambda test: all(x not in test for x in ignored_tests),
+                self.orig_rev_history,
             )
         )
         if masked:
@@ -131,12 +132,12 @@ class RevisionResults:
         for i, solution in enumerate(self.solutions_found):
             pos = np.array(solution.variables[0])
             rev_solution = list(data.tests_index[pos == 1])
-            if len(self.real_rev_history) > 0:
-                self.print_solution_score(i, rev_solution)
-                # solution_tests = "\n\t".join(rev_solution)
-                # print(f"\t{solution_tests}")
-            else:
-                self.solution_score = (0, 0, 0, len(rev_solution))
+            # if len(self.real_rev_history) > 0:
+            self.print_solution_score(i, rev_solution)
+            # solution_tests = "\n\t".join(rev_solution)
+            # print(f"\t{solution_tests}")
+            # else:
+            #     self.solution_score = (0, 0, 0, len(rev_solution))
 
     def print_execution_inspection(self, data):
         def aux_loop(tests_data):
@@ -217,16 +218,16 @@ class RevisionResults:
             )
 
     def print_revision_status(self):
-        if len(self.real_rev_history) == 0:
+        if len(self.orig_rev_history) == 0:
             # if self.missing_builds:
             #     print(f"Revision {self.rev_id} has missing builds")
             # else:
             #     print(f"Revision {self.rev_id} had no failing tests")
             print(f"Revision {self.rev_id} had no failing tests")
         else:
-            failed_tests = f"{len(self.real_rev_history)} failed tests"
+            failed_tests = f"{len(self.orig_rev_history)} failed tests"
             if self.masked:
                 print(f"Revision {self.rev_id} - {failed_tests}")
             else:
-                joined = "\n\t".join(self.real_rev_history)
+                joined = "\n\t".join(self.orig_rev_history)
                 print(f"Revision {self.rev_id} - {failed_tests}:\n\t{joined}")

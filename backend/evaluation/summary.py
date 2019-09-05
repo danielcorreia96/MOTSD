@@ -59,10 +59,10 @@ class ResultsSummary:
 
         # Red Stats
         # Print results regarding the tool's ability to find the red tests
-        not_innocent_red_executions = [
-            res for res in red_executions if res.innocent is not True
-        ]
-        # not_innocent_red_executions = [res for res in red_executions]
+        # not_innocent_red_executions = [
+        #     res for res in red_executions if res.innocent is not True
+        # ]
+        not_innocent_red_executions = [res for res in red_executions]
         not_found_red_tests = [
             res for res in not_innocent_red_executions if res.solution_score[0] == 0
         ]
