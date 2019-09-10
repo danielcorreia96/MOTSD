@@ -83,7 +83,7 @@ class RevisionResults:
         self.computing_time = 0
         self.solution_metrics = []
 
-    def print_results(self, data: ProblemData):
+    def print_results(self, data: ProblemData, fixed_demo=False):
         def get_fake_filename(file_changed):
             result = re.search(r"/.*\.(.*)", file_changed)
             if result is None:  # directory
@@ -117,10 +117,25 @@ class RevisionResults:
             print(f"Revision {self.rev_id} failed due to {self.error_no_changed_items}")
             self.print_revision_status()
         else:
-            self.print_revision_status()
-            self.print_execution_results(data)
-            self.print_solution_list(data)
-            self.print_execution_inspection(data)
+            if fixed_demo:
+                self.print_revision_status()
+                self.print_solution_score(0, self.solutions_found)
+                self.computing_time = 0.1
+                print(f"Solution Size: {len(self.solutions_found)} tests")
+                self.new_feedback_time = sum(
+                    [
+                        data.history_test_execution_times[test]
+                        for test in self.solutions_found
+                    ]
+                )
+                print(
+                    f"Solution Feedback Loop Time: {self.new_feedback_time:.0f} seconds"
+                )
+            else:
+                self.print_revision_status()
+                self.print_execution_results(data)
+                self.print_solution_list(data)
+                self.print_execution_inspection(data)
 
         # separator
         print("==========================" * 4)

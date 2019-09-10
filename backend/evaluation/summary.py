@@ -1,5 +1,6 @@
 # coding=utf-8
 import pickle
+from collections import Counter
 from dataclasses import dataclass
 from typing import List
 
@@ -205,3 +206,10 @@ class ResultsSummary:
 
         print(f"{name} (avg, min, max, std): ({unpack(stats)})")
         print(f"{name} Percentiles (10, 25, 50, 75, 90): ({unpack(percentiles)})")
+
+    def merge_same(self, other: "ResultsSummary"):
+        # assume summaries are equal except for stats, which are added up
+        self.red_stats = Counter(self.red_stats) + Counter(other.red_stats)
+        self.new_feedback_time = Counter(self.new_feedback_time) + Counter(
+            other.new_feedback_time
+        )
