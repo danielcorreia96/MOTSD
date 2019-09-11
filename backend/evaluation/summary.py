@@ -174,8 +174,9 @@ class ResultsSummary:
         gc.collect()
         pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def export_to_csv_line(self, only_stats=False):
-        line = []
+    def export_to_csv_line(self, only_stats=False, prefix=None):
+
+        line = [prefix] if prefix is not None else []
         if not only_stats:
             line.extend(list(self.commits.values()))
             line.extend(list(self.executions.values()))
@@ -213,3 +214,38 @@ class ResultsSummary:
         self.new_feedback_time = Counter(self.new_feedback_time) + Counter(
             other.new_feedback_time
         )
+
+    def merge_diff(self, other: "ResultsSummary"):
+        def add_counter(prop1: dict, prop2: dict):
+            c = Counter()
+            c.update({x: 1 for x in prop1})
+            prop1 = c + Counter(prop1) + Counter(prop2)
+            for x in prop1:
+                prop1[x] -= 1
+            return prop1
+
+        self.commits = add_counter(self.commits, other.commits)
+        self.executions = add_counter(self.executions, other.executions)
+        for error in self.errors:
+            self.errors[error] = add_counter(self.errors[error], other.errors[error])
+        self.red_stats = add_counter(self.red_stats, other.red_stats)
+        self.solution_size = add_counter(self.solution_size, other.solution_size)
+        self.computing_time = add_counter(self.computing_time, other.computing_time)
+        self.orig_feedback_time = self.orig_feedback_time + other.orig_feedback_time
+        self.new_feedback_time = add_counter(
+            self.new_feedback_time, other.new_feedback_time
+        )
+
+    def normalize_diff(self, n):
+        self.commits["red_p"] = self.commits["red_p"] / n
+        self.executions["total_p"] = self.executions["total_p"] / n
+        self.executions["red_p"] = self.executions["red_p"] / n
+        for k in self.red_stats:
+            self.red_stats[k] = self.red_stats[k] / n
+        for k in self.solution_size:
+            self.solution_size[k] = int(self.solution_size[k] / n)
+        for k in self.computing_time:
+            self.computing_time[k] = int(self.computing_time[k] / n)
+        self.orig_feedback_time = self.orig_feedback_time / n
+        for k in self.new_feedback_time:
+            self.new_feedback_time[k] = int(self.new_feedback_time[k] / n)

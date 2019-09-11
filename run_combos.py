@@ -3,9 +3,11 @@ import os
 from multiprocessing import Pool
 import click
 
+
 @click.group()
 def cli():
     pass
+
 
 @cli.command("start")
 @click.argument("input_list", type=click.Path(exists=True, readable=True))
