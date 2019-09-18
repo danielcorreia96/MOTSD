@@ -64,6 +64,27 @@ class ResultsSummary:
         #     res for res in red_executions if res.innocent is not True
         # ]
         not_innocent_red_executions = [res for res in red_executions]
+        self.set_red_stats(not_innocent_red_executions, total_innocent_reds)
+
+        # Solution Size
+        metric_keys = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
+        self.set_solution_size(metric_keys, tool_executions)
+
+        # Computing Time
+        self.set_computing_time(metric_keys, tool_executions)
+
+        # Original Feedback Time
+        self.orig_feedback_time = sum(data.history_test_execution_times.values())
+
+        # New Feedback Time
+        self.set_feedback_time(metric_keys, tool_executions)
+
+        # Store data
+        self.data = results
+        for res in self.data:
+            res.solutions_found = []
+
+    def set_red_stats(self, not_innocent_red_executions, total_innocent_reds):
         not_found_red_tests = [
             res for res in not_innocent_red_executions if res.solution_score[0] == 0
         ]
@@ -73,7 +94,6 @@ class ResultsSummary:
         found_red_tests_at_least_one = [
             res for res in not_innocent_red_executions if res.solution_score[0] > 0
         ]
-
         self.red_stats = {
             "Innocent Reds": total_innocent_reds,
             "Only Ignored Tests": len(red_ignored_tests),
@@ -95,14 +115,13 @@ class ResultsSummary:
             ),
         }
 
-        # Solution Size
-        metric_keys = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
+    def set_solution_size(self, metric_keys, tool_executions):
         sizes = np.array([res.solution_score[3] for res in tool_executions])
         self.solution_size = dict(
             zip(metric_keys, backend.evaluation.utils.get_metric_stats(sizes))
         )
 
-        # Computing Time
+    def set_computing_time(self, metric_keys, tool_executions):
         times = np.array(
             [res.computing_time for res in tool_executions if res.computing_time > 0]
         )
@@ -110,10 +129,7 @@ class ResultsSummary:
             zip(metric_keys, backend.evaluation.utils.get_metric_stats(times))
         )
 
-        # Original Feedback Time
-        self.orig_feedback_time = sum(data.history_test_execution_times.values())
-
-        # New Feedback Time
+    def set_feedback_time(self, metric_keys, tool_executions):
         feedback_times = np.array(
             [
                 res.new_feedback_time
@@ -125,10 +141,28 @@ class ResultsSummary:
             zip(metric_keys, backend.evaluation.utils.get_metric_stats(feedback_times))
         )
 
-        # Store data
-        self.data = results
-        for res in self.data:
-            res.solutions_found = []
+    def recompute_innocent(self):
+        results = self.data
+        tool_executions = backend.evaluation.utils.get_tool_executions(results)
+        total_innocent_reds = backend.evaluation.utils.get_total_innocent_reds(results)
+        red_executions = [
+            res for res in tool_executions if len(res.real_rev_history) > 0
+        ]
+        not_innocent_red_executions = [
+            res for res in red_executions if res.innocent is not True
+        ]
+        self.set_red_stats(not_innocent_red_executions, total_innocent_reds)
+
+        # Solution Size
+        metric_keys = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
+        self.set_solution_size(metric_keys, tool_executions)
+
+        # Computing Time
+        self.set_computing_time(metric_keys, tool_executions)
+
+        # New Feedback Time
+        self.set_feedback_time(metric_keys, tool_executions)
+        return self
 
     def export_to_text(self):
         commits = list(self.commits.values())
@@ -210,20 +244,12 @@ class ResultsSummary:
 
     def merge_same(self, other: "ResultsSummary"):
         # assume summaries are equal except for stats, which are added up
-        self.red_stats = Counter(self.red_stats) + Counter(other.red_stats)
-        self.new_feedback_time = Counter(self.new_feedback_time) + Counter(
-            other.new_feedback_time
+        self.red_stats = add_counter(self.red_stats, other.red_stats)
+        self.new_feedback_time = add_counter(
+            self.new_feedback_time, other.new_feedback_time
         )
 
     def merge_diff(self, other: "ResultsSummary"):
-        def add_counter(prop1: dict, prop2: dict):
-            c = Counter()
-            c.update({x: 1 for x in prop1})
-            prop1 = c + Counter(prop1) + Counter(prop2)
-            for x in prop1:
-                prop1[x] -= 1
-            return prop1
-
         self.commits = add_counter(self.commits, other.commits)
         self.executions = add_counter(self.executions, other.executions)
         for error in self.errors:
@@ -249,3 +275,12 @@ class ResultsSummary:
         self.orig_feedback_time = self.orig_feedback_time / n
         for k in self.new_feedback_time:
             self.new_feedback_time[k] = int(self.new_feedback_time[k] / n)
+
+
+def add_counter(prop1: dict, prop2: dict):
+    c = Counter()
+    c.update({x: 1 for x in prop1})
+    prop1 = c + Counter(prop1) + Counter(prop2)
+    for x in prop1:
+        prop1[x] -= 1
+    return prop1
