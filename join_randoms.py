@@ -16,7 +16,10 @@ def cli():
 
 @cli.command("per_batch")
 @click.argument("data_dir", type=click.Path(exists=True))
-def start(data_dir):
+@click.option(
+    "--innocent", is_flag=True, help="Recompute each sample using innocent filter"
+)
+def start(data_dir, innocent):
     for batch in ["demo1", "demo2", "demo3", "demo4"]:
         for prob in [str(int(x * 100)) for x in [0.10, 0.15, 0.20, 0.25]]:
             pattern = re.compile(prob + r"_\d+_" + batch + r".pickle")
@@ -26,8 +29,13 @@ def start(data_dir):
                 if re.search(pattern, x) is not None
             ]
             aggregated: ResultsSummary = pickle.load(open(results[0], mode="rb"))
+            if innocent:
+                aggregated.recompute_innocent()
             for file in results[1:]:
-                aggregated.merge_same(pickle.load(open(file, mode="rb")))
+                summary = pickle.load(open(file, mode="rb"))
+                if innocent:
+                    summary.recompute_innocent()
+                aggregated.merge_same(summary)
 
             for k in aggregated.red_stats:
                 aggregated.red_stats[k] = aggregated.red_stats[k] / 10

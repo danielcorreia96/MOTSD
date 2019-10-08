@@ -107,8 +107,9 @@ def run_optimization_for_demo(
         revision_results = RevisionResults(
             revision, data.branch, data.ignore_tests, previous_rev, masked
         )
-        run_pipeline(data, metrics, revision_results, ignore_changes)
-        revision_results.print_results(data)
+        if len(revision_results.real_rev_history) > 0:
+            run_pipeline(data, metrics, revision_results, ignore_changes)
+            revision_results.print_results(data)
 
         return revision_results
 
@@ -186,8 +187,9 @@ def run_random_demo(
             # Running in not fixed sample mode, i.e. get a new test sample for each commit
             t_sample = random.sample(tests, int(random_p * (len(tests))))
 
-        revision_results.solutions_found = t_sample
-        revision_results.print_results(data, fixed_demo=True)
+        if len(revision_results.real_rev_history) > 0:
+            revision_results.solutions_found = t_sample
+            revision_results.print_results(data, fixed_demo=True)
 
         return revision_results
 

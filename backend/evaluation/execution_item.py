@@ -63,7 +63,7 @@ class RevisionResults:
         if len(self.orig_rev_history) == 0:
             # self.missing_builds = has_missing_builds_for_revision(revision=self.rev_id)
             if previous_rev is not None:
-                self.orig_rev_history = previous_rev.real_rev_history
+                self.orig_rev_history = previous_rev.orig_rev_history
             else:
                 self.orig_rev_history = set()
 
@@ -74,6 +74,15 @@ class RevisionResults:
                 self.orig_rev_history,
             )
         )
+        # Filter failed tests from previous rev
+        if previous_rev is not None:
+            self.real_rev_history = set(
+                filter(
+                    lambda x: x not in previous_rev.orig_rev_history,
+                    self.real_rev_history,
+                )
+            )
+
         if masked:
             self.fake = Factory.create()
 
