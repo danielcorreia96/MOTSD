@@ -14,6 +14,11 @@ def cli():
 @cli.command("run")
 @click.argument("config_file", type=click.Path(exists=True, readable=True))
 def run_profiler_for_config(config_file):
+    """
+    Run OpenCover profiler for a given configuration file
+
+    :param config_file: path to the configuration file
+    """
     # Load config file
     with open(config_file, mode="r") as demo_file:
         config = json.load(demo_file)
@@ -25,58 +30,58 @@ def run_profiler_for_config(config_file):
 
 
 def run_coverage_profiler(config, testlist, log_file):
-    print(testlist)
-    log_file.write(testlist + "\n")
-    log_file.flush()
+    """
+    Run OpenCover profiler for a given list of tests and configuration file
 
-    command, output = get_opencover_args(config, testlist)
+    :param config: path to configuration file
+    :param testlist: path to file with list of tests to run
+    :param log_file: path to logging file
+    """
+    def write_log(message):
+        print(message)
+        log_file.write(message + "\n")
+        log_file.flush()
 
-    print(f"Command: {command} --> Output: {output}")
-    log_file.write(f"Command: {command} --> Output: {output}\n")
-    log_file.flush()
+    write_log(testlist)
+    command, testlist_id = get_opencover_args(config, testlist)
+    write_log(f"Command: {command} --> Output: {testlist_id}")
 
-    # Run and profile tests with OC
+    # Run and profile tests with OpenCover
     start = time.perf_counter()
     subprocess.call(command)
     end = time.perf_counter()
 
-    print(f"Run for {output}: {(end - start) / 60} minutes")
-    log_file.write(f"Run for {output}: {(end - start) / 60} minutes\n")
-    log_file.flush()
+    write_log(f"Run for {testlist_id}: {(end - start) / 60} minutes")
 
 
 def get_opencover_args(config, testlist):
-    # Load relevant data from config
-    runner = config["runner"]
-    runner_args = config["runner_args"]
-    threshold = config["threshold"]
-    filters = config["filters"]
-    cover_by_test = config["cover_by_test"]
-    search_dirs = config["searchdirs_path"]
+    """
+    Builds an OpenCover command according to the configuration file and list of tests provided.
 
-    # Build OpenCover command
+    :param config: path to configuration file
+    :param testlist: path to file with list of tests to run
+    :return: an OpenCover command and the id of the list of tests
+    """
+    # Load relevant data from config
     args = [
-        f" -target: {runner}",
-        f" -targetargs:{' '.join(runner_args)} {testlist}",
-        f" -threshold:{threshold} ",
+        f" -target: {config['runner']}",
+        f" -targetargs:{' '.join(config['runner_args'])} {testlist}",
+        f" -threshold:{config['threshold']} ",
         " -hideskipped:All ",
         " -mergebyhash ",
         #        " -skipautoprops ",
-        f" -filter:{' '.join(filters)} ",
-        f" -coverbytest:{';'.join(cover_by_test)} ",
-        f" -searchdirs: {search_dirs} ",
+        f" -filter:{' '.join(config['filters'])} ",
+        f" -coverbytest:{';'.join(config['cover_by_test'])} ",
+        f" -searchdirs: {config['searchdirs_path']} ",
         " -register:user ",
     ]
+    testlist_id = re.search(re.escape(config["runlists_path"]) + r"(.*).in", testlist).group(1)
+
+    # Build OpenCover command with arguments
     command = [config["opencover_exec"]]
     command.extend(args)
-
-    runlists_path = config["runlists_path"]
-    pattern = re.escape(runlists_path) + r"(.*).in"
-    output = re.search(pattern, testlist).group(1)
-
-    reports_path = config["reports_path"]
-    command.append(f"-output:{reports_path}refactor_{output}.xml")
-    return command, output
+    command.append(f"-output:{config['reports_path']}refactor_{testlist_id}.xml")
+    return command, testlist_id
 
 
 if __name__ == "__main__":

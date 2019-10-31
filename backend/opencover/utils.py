@@ -31,17 +31,17 @@ def get_method_file_ref(method):
 
 
 def get_method_coverage(method):
-    # get method point tag
+    # Get method point tag
     method_point = next(method.iter("MethodPoint"), None)
     if method_point is None or not list(method_point):
         return [None, None]
 
-    # look at tracked method refs
+    # Look at tracked method refs
     tracked_refs = method_point[0]
     if not list(tracked_refs):
         return [None, None]
 
-    # return uids of tests that visit the 1st sequence point
+    # Return uids of tests that visit the 1st sequence point
     tests_uids = list(map(lambda x: x.attrib["uid"], tracked_refs))
 
     return [get_method_name(method), tests_uids]

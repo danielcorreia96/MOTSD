@@ -15,6 +15,15 @@ from backend.opencover import parser
 @click.argument("output_name")
 @click.argument("branch_name")
 def process_multiple_xml_reports(reports_path, output_name, branch_name):
+    """
+    Parse OpenCover's XML coverage reports into an activity matrix and tests/methods name maps
+    Assumes that the reports_path is a directory containing multiple coverage reports.
+
+    :param reports_path: path to directory containing the coverage reports
+    :param output_name: name of the output files generated for the activity matrix and maps
+    :param branch_name: name of the branch used for matching with files in the repository
+    """
+    # Get coverage reports files from the directory
     report_files = list(
         map(
             lambda report: os.path.abspath(os.path.join(reports_path, report)),
@@ -39,10 +48,19 @@ def process_multiple_xml_reports(reports_path, output_name, branch_name):
     }
     merged_id_act_matrices = {k: list(itertools.chain(*x[k])) for k in x}
 
-    export_activity_matrix(merged_id_act_matrices, methods_map, output_name, tests_map)
+    # Export merged results
+    export_activity_matrix(output_name, methods_map, tests_map, merged_id_act_matrices)
 
 
-def export_activity_matrix(activity_matrix, methods_map, output_name, tests_map):
+def export_activity_matrix(output_name, methods_map, tests_map, activity_matrix):
+    """
+    Build+export activity matrix and tests/methods map to JSON files.
+
+    :param output_name: name identifier for the JSON output files
+    :param activity_matrix: id-activity matrix
+    :param methods_map: methods map
+    :param tests_map: tests map
+    """
     # Convert id-activity matrix to binary activity matrix
     print(f"Converting to the binary activity matrix")
     binary_act_matrix = parser.build_binary_activity_matrix(
@@ -64,13 +82,16 @@ def get_id_activity_matrix(xml_report, branch):
     # Get files map
     print(f"Getting file map to handle c# namespace issues")
     files_map = parser.get_files_map_from_report(xml_report, branch)
+
     # Split xml report based on module type (test vs code)
     print(f"Loading xml report {xml_report}")
     test_modules, code_modules = parser.get_modules_from_report(xml_report)
+
     # Fill uid maps with tests names and methods names
     print(f"Mapping tests and methods uids")
     tests_map = parser.build_tests_map(test_modules)
     methods_map = parser.build_methods_map(code_modules)
+
     # Build activity matrix based on ids
     print(f"Building the id-activity matrix")
     id_act_matrix = parser.build_id_activity_matrix(
