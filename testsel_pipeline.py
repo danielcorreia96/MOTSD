@@ -19,8 +19,8 @@ np.set_printoptions(threshold=np.inf)
 OBJECTIVES_MAP = {
     "ddu": metrics.calculate_ddu,
     "n_tests": metrics.calculate_number_of_tests,
-    "fails": metrics.calculate_history_test_fails,
-    "exec_times": metrics.calculate_history_test_exec_times,
+    "fails": metrics.calculate_test_fails,
+    "exec_times": metrics.calculate_exec_times,
     "norm_coverage": metrics.calculate_norm_coverage,
     "coverage": metrics.calculate_coverage,
 }

@@ -6,6 +6,7 @@ from jmetal.core.solution import BinarySolution
 from backend.selection.ddu_metric import ddu
 from backend.selection.test_selection import TestSelection
 
+
 def get_selected_matrix(particle: list, activity_matrix: np.ndarray) -> np.ndarray:
     """
     Get subset of the activity matrix selected by the particle.
@@ -17,6 +18,7 @@ def get_selected_matrix(particle: list, activity_matrix: np.ndarray) -> np.ndarr
     particle = np.array(particle)
     sub_matrix = activity_matrix[particle == 1]
     return sub_matrix
+
 
 def calculate_ddu(problem: TestSelection, solution: BinarySolution) -> float:
     """
@@ -86,7 +88,7 @@ def calculate_number_of_tests(problem: TestSelection, solution: BinarySolution) 
     return total_tests
 
 
-def calculate_history_test_fails(problem: TestSelection, solution: BinarySolution) -> int:
+def calculate_test_fails(problem: TestSelection, solution: BinarySolution) -> int:
     """
     Calculate total previous test failures for a candidate solution.
 
@@ -102,7 +104,7 @@ def calculate_history_test_fails(problem: TestSelection, solution: BinarySolutio
     return -1 * sum(testfails_history)
 
 
-def calculate_history_test_exec_times(problem: TestSelection, solution: BinarySolution) -> float:
+def calculate_exec_times(problem: TestSelection, solution: BinarySolution) -> float:
     """
     Calculate total execution time for a candidate solution.
 

@@ -39,25 +39,6 @@ def get_testfails_for_revision(revision: str) -> pd.DataFrame:
 
 
 @memory.cache
-def has_missing_builds_for_revision(revision: str) -> bool:
-    """
-    Check in database if a given revision has missing builds of one of the stages.
-
-    :param revision: revision id
-    :return: True if the revision has missing builds
-    """
-    print(f"Querying db for missing builds for rev {revision}")
-    for stage in ["nodevbuild", "nocorebuild"]:
-        query = Path(f"{database_home}check_{stage}_rev.sql").read_text()
-        connection = pyodbc.connect(DB_CONFIG)
-        result = pd.read_sql_query(query, connection, params=[revision])
-        if len(set(result.FULLNAME.values)) == 0:
-            print(f"Missing builds for {stage}")
-            return True
-    return False
-
-
-@memory.cache
 def get_test_execution_times(from_dt: str, to_dt: str) -> pd.DataFrame:
     """
     Query the database for the test execution times on a given date interval.

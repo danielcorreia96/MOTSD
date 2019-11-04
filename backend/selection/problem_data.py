@@ -1,6 +1,9 @@
 # coding=utf-8
 import json
 import re
+from typing import List
+
+import pandas as pd
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -40,7 +43,13 @@ def normalize_iterative_test_name(test: str):
     return test
 
 
-def get_historical_metric_map(query_results):
+def get_historical_metric_map(query_results: pd.DataFrame) -> dict:
+    """
+    Convert 2-columns query results to a dictionary mapping the test name to the historical metric value
+
+    :param query_results: 2-columns pandas dataframe with the query results
+    :return: dictionary mapping the test names to the historical metric values
+    """
     history_metric_map = defaultdict(int)
     for test, time in query_results.values:
         key = normalize_iterative_test_name(test)
@@ -115,15 +124,18 @@ class ProblemData:
         actm_pattern = r"(.*)\\actmatrix_(.*)\.json"
         path, timestamp = re.search(actm_pattern, activity_matrix).groups()
 
+        # activity matrix
         with open(activity_matrix) as actm_file:
             self.activity_matrix = np.array(json.load(actm_file), dtype=bool)
             self.original_matrix = self.activity_matrix
 
+        # tests
         with open(f"{path}\\testids_{timestamp}.json") as tests_file:
             tests = np.array(list(json.load(tests_file).values()))
             self.tests_index = np.array(list(normalize_test_name(tests)))
             self.original_tests = self.tests_index
 
+        # methods
         with open(f"{path}\\methodids_{timestamp}.json") as methods_file:
             self.methods_map = json.load(methods_file)
             # print(f"methods map: {len(self.methods_map.keys())}")
@@ -131,6 +143,10 @@ class ProblemData:
             self.original_methods = self.methods_index
 
     def reset(self):
+        """
+        Reset current activity matrix, tests and methods data to the originally loaded data.
+
+        """
         self.activity_matrix = self.original_matrix
         self.tests_index = self.original_tests
         self.methods_index = self.original_methods
@@ -154,7 +170,6 @@ class ProblemData:
     def filter_data_for_commit(self, changed_methods):
         """
         Filter matrix and indexes based on commit.
-
         Also, the changed data is filtered for tests/methods with no activity
 
         :param changed_methods: indexes of methods changed by the commit
@@ -165,13 +180,19 @@ class ProblemData:
         # Filter no activity tests/methods
         self.filter_tests_with_no_activity()
         self.filter_methods_with_no_activity()
-        pass
 
-    def get_changed_indexes_for_changelist(self, changelist, ignore_changes):
-        cs_pattern = self.branch + r"/(.*)\.cs$"
-        xaml_cs_pattern = self.branch + r"/(.*)xaml\.cs"
+    def get_changed_indexes_for_changelist(
+        self, changelist: List[List], ignore_changes: List
+    ) -> object:
+        """
+        Get the changed method indexes in the activity matrix based on the changelist
 
-        # filter changelist before processing
+        :param changelist: list of changed files (each element is pair with the type of change and the filename)
+        :param ignore_changes: list of file paths to be ignored
+        :return: on success, returns a list of changed indexes in the activity matrix.
+                 on failure, returns a string describing the error case
+        """
+        # Filter changelist before processing
         changelist = [
             change
             for change in changelist
@@ -181,8 +202,11 @@ class ProblemData:
             )
         ]
 
+        # Process changelist
         new_files = []
         changed_files = []
+        cs_pattern = self.branch + r"/(.*)\.cs$"
+        xaml_cs_pattern = self.branch + r"/(.*)xaml\.cs"
         for x in changelist:
             if re.search(cs_pattern, x[1]):
                 # Check if it's not a *.xaml.cs file
@@ -198,7 +222,7 @@ class ProblemData:
                     elif self.new_files.get(dot_filename) is not None:
                         new_files.append(dot_filename)
 
-        # print(changed_files)
+        # Check if no .cs files were changed
         if not changed_files:
             return "[Error] Changelist contains no covered .cs files"
 
@@ -206,14 +230,15 @@ class ProblemData:
         if len(changed_files) == len(new_files):
             return "[Error] Changelist contains only new files or modified new files"
 
+        # Map files to method indexes
         changed_indexes = []
-
         for method in self.methods_map.values():
             if any(changed in method for changed in changed_files):
                 matched_methods = np.where(self.methods_index == method)
                 changed_indexes.append(matched_methods[0][0])
 
-        # print(f"changed indexes: {changed_indexes}")
+        # Check if there are no method indexes to return
         if not changed_indexes:
             return "[Error] The provided activity matrix has no coverage data for the changed files"
+
         return changed_indexes

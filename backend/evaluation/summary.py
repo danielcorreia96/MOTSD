@@ -1,14 +1,17 @@
 # coding=utf-8
+import gc
 import pickle
 from collections import Counter
 from dataclasses import dataclass
-from typing import List
+from typing import List, BinaryIO
 
 import numpy as np
 
-import backend.evaluation.utils
+from backend.evaluation import utils
 from backend.evaluation.execution_item import RevisionResults
 from backend.selection.problem_data import ProblemData
+
+STATS_KEYS = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
 
 
 @dataclass
@@ -24,9 +27,15 @@ class ResultsSummary:
     new_feedback_time: dict
 
     def __init__(self, results: List[RevisionResults], data: ProblemData):
-        tool_executions = backend.evaluation.utils.get_tool_executions(results)
-        tool_no_exec = backend.evaluation.utils.get_tool_no_executions(results)
-        total_innocent_reds = backend.evaluation.utils.get_total_innocent_reds(results)
+        """
+        Populate results summary with evaluation metrics values.
+
+        :param results: list of execution results
+        :param data: full dataset related to this set of results
+        """
+        tool_executions = utils.get_tool_executions(results)
+        tool_no_exec = utils.get_tool_no_executions(results)
+        total_innocent_reds = utils.get_total_innocent_reds(results)
 
         # Commits
         red_commits = [res for res in results if len(res.real_rev_history) > 0]
@@ -55,96 +64,94 @@ class ResultsSummary:
         }
         self.errors = {}
         for error, pattern in error_cases.items():
-            total, red = backend.evaluation.utils.get_error_stats(pattern, tool_no_exec)
+            total, red = utils.get_error_stats(pattern, tool_no_exec)
             self.errors[error] = {"total": len(total), "red": len(red)}
 
-        # Red Stats
-        # Print results regarding the tool's ability to find the red tests
-        # not_innocent_red_executions = [
-        #     res for res in red_executions if res.innocent is not True
-        # ]
-        not_innocent_red_executions = [res for res in red_executions]
-        self.set_red_stats(not_innocent_red_executions, total_innocent_reds)
+        # Red Stats: "yes, at least one", Precision, Recall
+        self.set_red_stats(red_executions, total_innocent_reds)
 
-        # Solution Size
-        metric_keys = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
-        self.set_solution_size(metric_keys, tool_executions)
+        # Solution Size, Computing Time
+        self.set_solution_size(tool_executions)
+        self.set_computing_time(tool_executions)
 
-        # Computing Time
-        self.set_computing_time(metric_keys, tool_executions)
-
-        # Original Feedback Time
+        # Feedback Time (original, new)
         self.orig_feedback_time = sum(data.history_test_execution_times.values())
-
-        # New Feedback Time
-        self.set_feedback_time(metric_keys, tool_executions)
+        self.set_feedback_time(tool_executions)
 
         # Store data
         self.data = results
         for res in self.data:
             res.solutions_found = []
 
-    def set_red_stats(self, not_innocent_red_executions, total_innocent_reds):
-        not_found_red_tests = [
-            res for res in not_innocent_red_executions if res.solution_score[0] == 0
-        ]
-        red_ignored_tests = [
-            res for res in not_innocent_red_executions if res.solution_score[0] == -1
-        ]
-        found_red_tests_at_least_one = [
-            res for res in not_innocent_red_executions if res.solution_score[0] > 0
-        ]
+    def set_red_stats(self, red_execs: List[RevisionResults], total_innocent_reds: int):
+        """
+        Populate map of values related to red executions, namely Precision and Recall values.
+
+        :param red_execs: list of execution results for red commits
+        :param total_innocent_reds: total number of innocent red commits
+        """
+        not_found_red_tests = [res for res in red_execs if res.score[0] == 0]
+        red_ignored_tests = [res for res in red_execs if res.score[0] == -1]
+        found_red_tests_at_least_one = [res for res in red_execs if res.score[0] > 0]
         self.red_stats = {
             "Innocent Reds": total_innocent_reds,
             "Only Ignored Tests": len(red_ignored_tests),
-            "Valid Reds": len(not_innocent_red_executions),
-            "No": len(not_found_red_tests) / len(not_innocent_red_executions),
-            "At Least One": len(found_red_tests_at_least_one)
-            / len(not_innocent_red_executions),
-            "Macro-Precision": backend.evaluation.utils.get_macro_precision(
-                not_innocent_red_executions
-            ),
-            "Micro-Precision": backend.evaluation.utils.get_micro_precision(
-                not_innocent_red_executions
-            ),
-            "Macro-Recall": backend.evaluation.utils.get_macro_recall(
-                not_innocent_red_executions
-            ),
-            "Micro-Recall": backend.evaluation.utils.get_micro_recall(
-                not_innocent_red_executions
-            ),
+            "Valid Reds": len(red_execs),
+            "No": len(not_found_red_tests) / len(red_execs),
+            "At Least One": len(found_red_tests_at_least_one) / len(red_execs),
+            "Macro-Precision": utils.get_macro_precision(red_execs),
+            "Micro-Precision": utils.get_micro_precision(red_execs),
+            "Macro-Recall": utils.get_macro_recall(red_execs),
+            "Micro-Recall": utils.get_micro_recall(red_execs),
         }
 
-    def set_solution_size(self, metric_keys, tool_executions):
-        sizes = np.array([res.solution_score[3] for res in tool_executions])
-        self.solution_size = dict(
-            zip(metric_keys, backend.evaluation.utils.get_metric_stats(sizes))
-        )
+    def set_solution_size(self, executions: List[RevisionResults]):
+        """
+        Populate solution size map with stats and percentiles values
 
-    def set_computing_time(self, metric_keys, tool_executions):
+        - Stats: average, min, max, standard deviation
+        - Percentiles: 10, 25, 50, 75, 90
+        :param executions: list of execution results
+        """
+        sizes = np.array([res.score[3] for res in executions])
+        self.solution_size = dict(zip(STATS_KEYS, utils.get_metric_stats(sizes)))
+
+    def set_computing_time(self, executions: List[RevisionResults]):
+        """
+        Populate computing time map with stats and percentiles values
+
+        - Stats: average, min, max, standard deviation
+        - Percentiles: 10, 25, 50, 75, 90
+        :param executions: list of execution results
+        """
         times = np.array(
-            [res.computing_time for res in tool_executions if res.computing_time > 0]
+            [res.computing_time for res in executions if res.computing_time > 0]
         )
-        self.computing_time = dict(
-            zip(metric_keys, backend.evaluation.utils.get_metric_stats(times))
-        )
+        self.computing_time = dict(zip(STATS_KEYS, utils.get_metric_stats(times)))
 
-    def set_feedback_time(self, metric_keys, tool_executions):
+    def set_feedback_time(self, executions: List[RevisionResults]):
+        """
+        Populate feedback time map with stats and percentiles values
+
+        - Stats: average, min, max, standard deviation
+        - Percentiles: 10, 25, 50, 75, 90
+        :param executions: list of execution results
+        """
         feedback_times = np.array(
-            [
-                res.new_feedback_time
-                for res in tool_executions
-                if res.new_feedback_time > 0
-            ]
+            [res.new_feedback_time for res in executions if res.new_feedback_time > 0]
         )
         self.new_feedback_time = dict(
-            zip(metric_keys, backend.evaluation.utils.get_metric_stats(feedback_times))
+            zip(STATS_KEYS, utils.get_metric_stats(feedback_times))
         )
 
     def recompute_innocent(self):
+        """
+        Recompute all evaluation metrics in this summary using the innocent commit filter
+
+        """
         results = self.data
-        tool_executions = backend.evaluation.utils.get_tool_executions(results)
-        total_innocent_reds = backend.evaluation.utils.get_total_innocent_reds(results)
+        tool_executions = utils.get_tool_executions(results)
+        total_innocent_reds = utils.get_total_innocent_reds(results)
         red_executions = [
             res for res in tool_executions if len(res.real_rev_history) > 0
         ]
@@ -153,18 +160,15 @@ class ResultsSummary:
         ]
         self.set_red_stats(not_innocent_red_executions, total_innocent_reds)
 
-        # Solution Size
-        metric_keys = ["avg", "min", "max", "std", "P10", "P25", "P50", "P75", "P90"]
-        self.set_solution_size(metric_keys, tool_executions)
-
-        # Computing Time
-        self.set_computing_time(metric_keys, tool_executions)
-
-        # New Feedback Time
-        self.set_feedback_time(metric_keys, tool_executions)
-        return self
+        self.set_solution_size(tool_executions)
+        self.set_computing_time(tool_executions)
+        self.set_feedback_time(tool_executions)
 
     def export_to_text(self):
+        """
+        Export the summary in text format to stdout
+
+        """
         commits = list(self.commits.values())
         print(f"# Commits - {commits[0]} (red: {commits[1]} -> {commits[2]*100:.0f}%)")
 
@@ -202,14 +206,24 @@ class ResultsSummary:
         feedback_time = list(self.new_feedback_time.values())
         self.print_metric_stats("New Feedback Time", feedback_time)
 
-    def export_to_pickle(self, file):
-        import gc
+    def export_to_pickle(self, file: BinaryIO):
+        """
+        Exports the summary to a pickle file.
 
+        :param file: output file descriptor
+        """
+        # Force garbage collection due to memory concerns when handling multiple summaries
         gc.collect()
         pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def export_to_csv_line(self, only_stats=False, prefix=None):
+    def export_to_csv_line(self, only_stats: bool = False, prefix: str = None) -> str:
+        """
+        Get a single CSV line representation of the summary using "|" (vertical bar) as separator.
 
+        :param only_stats: flag indicating if the line should contain only metrics and stats values
+        :param prefix: a custom first element for the line, if needed
+        :return: the CSV line as a string
+        """
         line = [prefix] if prefix is not None else []
         if not only_stats:
             line.extend(list(self.commits.values()))
@@ -229,27 +243,41 @@ class ResultsSummary:
         return "|".join(line)
 
     @staticmethod
-    def print_metric_stats(name, data):
+    def print_metric_stats(name: str, data: List):
         """
             Print avg, min, max, stdev + percentiles (10, 25, 50, 75, 90)
+
+            :param name: name of evaluation metric
+            :param data: list of data points
         """
 
         def unpack(values):
+            # Helper function for unpacking the values into the f-string
             return ",".join(str(x) for x in values)
 
         stats, percentiles = data[0:4], data[4:]
-
         print(f"{name} (avg, min, max, std): ({unpack(stats)})")
         print(f"{name} Percentiles (10, 25, 50, 75, 90): ({unpack(percentiles)})")
 
     def merge_same(self, other: "ResultsSummary"):
-        # assume summaries are equal except for stats, which are added up
+        """
+        Merge the results of two summaries from the same evaluation period.
+
+        Note: this assumes that the summaries are equal except for stats, which are added up
+
+        :param other: the other ResultsSummary object to be merged with
+        """
         self.red_stats = add_counter(self.red_stats, other.red_stats)
         self.new_feedback_time = add_counter(
             self.new_feedback_time, other.new_feedback_time
         )
 
     def merge_diff(self, other: "ResultsSummary"):
+        """
+        Merge the results of two summaries from different evaluation periods.
+
+        :param other: the other ResultsSummary object to be merged with
+        """
         self.commits = add_counter(self.commits, other.commits)
         self.executions = add_counter(self.executions, other.executions)
         for error in self.errors:
@@ -262,7 +290,11 @@ class ResultsSummary:
             self.new_feedback_time, other.new_feedback_time
         )
 
-    def normalize_diff(self, n):
+    def normalize_diff(self, n: int):
+        """
+        Normalize (average) results in this summary by a number n
+
+        """
         self.commits["red_p"] = self.commits["red_p"] / n
         self.executions["total_p"] = self.executions["total_p"] / n
         self.executions["red_p"] = self.executions["red_p"] / n
@@ -278,6 +310,13 @@ class ResultsSummary:
 
 
 def add_counter(prop1: dict, prop2: dict):
+    """
+    Helper function to add the Counters of two dicts without breaking in case a key doesn't exist in both dicts.
+
+    :param prop1: a dictionary
+    :param prop2: another dictionary
+    :return: a Counter object with the sum of the two dicts Counters
+    """
     c = Counter()
     c.update({x: 1 for x in prop1})
     prop1 = c + Counter(prop1) + Counter(prop2)
