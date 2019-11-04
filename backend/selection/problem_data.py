@@ -9,10 +9,17 @@ import numpy as np
 from backend.integrations import database
 
 
-def normalize_test_name(tests):
-    # Normalize test names to match database
-    # - Only keep namespace and method name
-    # - Replace / with + to support dashboard tests
+def normalize_test_name(tests: np.ndarray):
+    """
+    Normalize test names to match database.
+
+    - Replace / with + to support dashboard tests
+    - Discard return type
+    - Only keep namespace and method name
+
+    :param tests: list of test names
+    :return: array with test names normalized
+    """
     return map(
         lambda test: ".".join(
             re.search(r"(.*)::(.*)\(", test.replace("/", "+").split(" ")[1]).groups()
@@ -21,7 +28,13 @@ def normalize_test_name(tests):
     )
 
 
-def normalize_iterative_test_name(test):
+def normalize_iterative_test_name(test: str):
+    """
+    Normalize iterative test name, if necessary
+
+    :param test: test name
+    :return: normalized test name
+    """
     if re.match(r"(.*\..+)\+.+", test):
         return re.match(r"(.*\..+)\+.+", test).group(1)
     return test
